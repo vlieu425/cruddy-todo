@@ -8,28 +8,82 @@ var items = {};
 // Public API - Fix these CRUD functions ///////////////////////////////////////
 
 exports.create = (text, callback) => {
-  var id = counter.getNextUniqueId();
-  items[id] = text;
-  callback(null, { id, text });
+  counter.getNextUniqueId((err, id) => {
+
+    if (err) {
+      console.error('There was an error: ', err);
+    }
+    fs.writeFile(path.join(exports.dataDir, `${id}.txt`), text, ()=> {
+      if (err) {
+        console.error('error here: ', err);
+      }
+      callback(null, {id, text });
+    });
+  });
 };
 
 exports.readAll = (callback) => {
-  var data = _.map(items, (text, id) => {
-    return { id, text };
+
+  fs.readdir(exports.dataDir, (err, files) => {
+    if (err) {
+      console.error('error: ', err);
+    } else {
+      if (files.length === 0) {
+        console.log('testing test');
+        callback(null, files);
+      } else {
+        const allData = files.map((file) => {
+          const fileName = path.parse(file).name;
+          console.log('file name: ', fileName);
+          return {'id': fileName, 'text': fileName};
+        });
+        callback(null, allData);
+      }
+    }
   });
-  callback(null, data);
 };
 
 exports.readOne = (id, callback) => {
+
+  fs.readFile(path.join(exports.dataDir, `${id}.txt`), (err, text)=> {
+    if (err) {
+      console.error('ReadOne Error: ', err);
+      callback(err);
+    } else {
+      callback(null, {id:id, text: text.toString()});
+    }
+  });
+
+  /*
   var text = items[id];
   if (!text) {
     callback(new Error(`No item with id: ${id}`));
   } else {
     callback(null, { id, text });
   }
+  */
 };
 
 exports.update = (id, text, callback) => {
+  exports.readOne(id, (err)=> {
+    if (err) {
+      console.error('Update Error: ', err);
+      callback(err);
+    } else {
+      fs.writeFile(path.join(exports.dataDir, `${id}.txt`), text, (err) => {
+        if (err) {
+          console.error('Update error: ', err);
+          callback(err);
+        } else {
+          callback(null, { id, text });
+        }
+      });
+    }
+  });
+
+
+
+  /*
   var item = items[id];
   if (!item) {
     callback(new Error(`No item with id: ${id}`));
@@ -37,9 +91,28 @@ exports.update = (id, text, callback) => {
     items[id] = text;
     callback(null, { id, text });
   }
+  */
 };
 
 exports.delete = (id, callback) => {
+  exports.readOne(id, (err)=> {
+    if (err) {
+      console.error('Deletion Error: ', err);
+      callback(err);
+    } else {
+      fs.unlink(path.join(exports.dataDir, `${id}.txt`), (err) => {
+        if (err) {
+          console.error('Deletion error: ', err);
+          callback(err);
+        } else {
+          callback(null, id);
+        }
+      });
+    }
+  });
+
+
+  /*
   var item = items[id];
   delete items[id];
   if (!item) {
@@ -48,6 +121,7 @@ exports.delete = (id, callback) => {
   } else {
     callback();
   }
+  */
 };
 
 // Config+Initialization code -- DO NOT MODIFY /////////////////////////////////
